@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import math 
 
 RED = "#F00"
+MAX_ITERATIONS = 30
+INITIAL_CLUSTERS_COUNT = 4
 
 class Point:
     def __init__(self, x, y):
@@ -14,8 +16,6 @@ class Point:
         return hash(self.x) + hash(self.y)
 
     def __eq__(self, other):
-        if(self == other):
-            return True
         return self.x == other.x and self.y == other.y
 
     def __repr__(self):
@@ -57,25 +57,35 @@ class Application:
             self.points = list(POINTS)
 
     def run(self):
-        print(f'Distance is {calculate_distance(Point(1, 2), Point(3, 4))}')
+        iterations = 1
 
-        rand_centroids, rest_points = find_random_from_list(self.points, 4)
+        medoids, rest_points = find_random_from_list(self.points, INITIAL_CLUSTERS_COUNT) 
+        mapping = assign_to_centroids(rest_points, medoids)
+        previousMapping = {}
 
-        plot_points(rest_points)
-        plot_points(rand_centroids, color=RED)
-        
-        print (f"rest_points: {len(rest_points)}, rand_centroids: {len(rand_centroids)}")
-        
-        mapping = assign_to_centroids(rest_points, rand_centroids)
-        plot_mapping(mapping)
+        while(not has_same_keys(mapping, previousMapping) and iterations < MAX_ITERATIONS):
+            print(f"medoids count: {len(medoids)}")
+            plot_result(rest_points, medoids, mapping, iterations)     
+            iterations += 1  
 
-        print_centroid_and_medoid(mapping)
-        new_medoids = find_new_centroids(mapping)
-        print(new_medoids)
+            previousMapping = mapping
+            medoids = find_new_medoids(mapping)
+            rest_points = list(filter(lambda p : p not in medoids, self.points))
+            mapping = assign_to_centroids(rest_points, medoids)
 
-        plt.savefig('test')
+        plot_result(rest_points, medoids, mapping, iterations)     
 
-def find_new_centroids(mapping):
+def has_same_keys(dict1, dict2):
+    if(len(dict1) != len(dict2)):
+        return False
+
+    for key in dict1.keys():
+        if key not in dict2.keys():
+            return False
+
+    return True
+
+def find_new_medoids(mapping):
     medoids = []
     for key in mapping.keys():
         points = mapping[key]
@@ -159,6 +169,13 @@ def calculate_distance(p1, p2):
     return math.sqrt(dx ** 2 + dy ** 2)
 
 # ======================================= PLOT =======================================
+def plot_result(rest_points, medoids, mapping, counter):
+    plot_points(rest_points)
+    plot_points(medoids, color=RED)
+    plot_mapping(mapping)
+    plt.savefig(f"plot-{counter}")
+    plt.clf()
+
 def plot_mapping(mapping):
     for key in mapping.keys():
         centroid = key
@@ -167,4 +184,4 @@ def plot_mapping(mapping):
 
 def plot_points(points, color=""):
     points_to_plot_tuple = points_arr_to_x_y_tuples(points)
-    plt.scatter(points_to_plot_tuple[0], points_to_plot_tuple[1], color = color if color is not "" else None)
+    plt.scatter(points_to_plot_tuple[0], points_to_plot_tuple[1], color = color if color != "" else None)
